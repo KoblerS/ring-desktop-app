@@ -95,7 +95,7 @@
       }
     },
     "win": {
-      "icon": "renderer/assets/app-logo.png",
+      "icon": "renderer/assets/app-logo.ico",
       "target": [
         {
           "target": "nsis",
@@ -114,9 +114,9 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon": "renderer/assets/app-logo.png",
-      "uninstallerIcon": "renderer/assets/app-logo.png",
-      "installerHeaderIcon": "renderer/assets/app-logo.png",
+      "installerIcon": "renderer/assets/app-logo.ico",
+      "uninstallerIcon": "renderer/assets/app-logo.ico",
+      "installerHeaderIcon": "renderer/assets/app-logo.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Ring Desktop"
