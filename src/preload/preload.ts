@@ -85,6 +85,29 @@ contextBridge.exposeInMainWorld('ringAPI', {
 
   removeLiveVideoDataListener: () => {
     ipcRenderer.removeAllListeners('live-video-data');
+  },
+
+  // Ring event notifications
+  onDing: (callback: (data: { deviceId: string; deviceName: string; timestamp: string }) => void) => {
+    ipcRenderer.on('ring-ding', (_, data) => callback(data));
+  },
+
+  onMotion: (callback: (data: { deviceId: string; deviceName: string; timestamp: string }) => void) => {
+    ipcRenderer.on('ring-motion', (_, data) => callback(data));
+  },
+
+  // Profile
+  getProfile: () => ipcRenderer.invoke('get-profile'),
+
+  // Auto-updater
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  onUpdateStatus: (callback: (data: { status: string; version?: string; percent?: number; error?: string; releaseNotes?: string }) => void) => {
+    ipcRenderer.on('update-status', (_, data) => callback(data));
+  },
+  removeUpdateStatusListener: () => {
+    ipcRenderer.removeAllListeners('update-status');
   }
 });
 
@@ -117,6 +140,14 @@ declare global {
       removeLiveSnapshotListener: () => void;
       onLiveVideoData: (callback: (data: { deviceId: string; data: string }) => void) => void;
       removeLiveVideoDataListener: () => void;
+      onDing: (callback: (data: { deviceId: string; deviceName: string; timestamp: string }) => void) => void;
+      onMotion: (callback: (data: { deviceId: string; deviceName: string; timestamp: string }) => void) => void;
+      getProfile: () => Promise<any>;
+      checkForUpdates: () => Promise<any>;
+      downloadUpdate: () => Promise<any>;
+      installUpdate: () => Promise<any>;
+      onUpdateStatus: (callback: (data: { status: string; version?: string; percent?: number; error?: string; releaseNotes?: string }) => void) => void;
+      removeUpdateStatusListener: () => void;
     };
   }
 }

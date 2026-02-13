@@ -986,3 +986,141 @@ body {
   background: var(--primary-color);
   color: white;
 }
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  top: 60px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 380px;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  animation: slideIn 0.3s ease forwards;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.toast:hover {
+  transform: translateX(-4px);
+  border-color: var(--primary-color);
+}
+
+.toast.ding {
+  border-left: 4px solid var(--primary-color);
+}
+
+.toast.motion {
+  border-left: 4px solid var(--warning-color);
+}
+
+.toast-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.toast.ding .toast-icon {
+  background: var(--primary-light);
+}
+
+.toast.motion .toast-icon {
+  background: rgba(255, 165, 2, 0.15);
+}
+
+.toast-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.toast.ding .toast-icon svg {
+  fill: var(--primary-color);
+}
+
+.toast.motion .toast-icon svg {
+  fill: var(--warning-color);
+}
+
+.toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.toast-body {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toast-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: var(--transition);
+}
+
+.toast-close:hover {
+  background: var(--bg-input);
+  opacity: 1;
+}
+
+.toast-close svg {
+  width: 16px;
+  height: 16px;
+  fill: var(--text-muted);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}

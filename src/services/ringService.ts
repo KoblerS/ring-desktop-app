@@ -115,10 +115,10 @@ export class RingService {
       this.lastEventTimestamps.set(camera.id.toString(), now);
     });
 
-    // Poll every 5 seconds
+    // Poll every 2 seconds for faster notifications
     this.eventPollingInterval = setInterval(() => {
       this.pollForEvents();
-    }, 5000);
+    }, 2000);
   }
 
   private async pollForEvents(): Promise<void> {
@@ -126,7 +126,6 @@ export class RingService {
       try {
         const response = await camera.getEvents({ limit: 5 });
         const events = response?.events;
-        console.log(`[Poll] Camera ${camera.name}: ${events?.length || 0} events found`);
         if (!events || !events.length) continue;
 
         const cameraId = camera.id.toString();
@@ -402,6 +401,13 @@ export class RingService {
 
   onMotion(callback: MotionCallback): void {
     this.motionCallbacks.push(callback);
+  }
+
+  async getProfile(): Promise<any> {
+    if (!this.ringApi) {
+      throw new Error("Ring API not initialized");
+    }
+    return await this.ringApi.getProfile();
   }
 
   async setLight(deviceId: string, on: boolean): Promise<void> {

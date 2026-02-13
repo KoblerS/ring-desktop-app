@@ -292,6 +292,57 @@
         color: var(--text-primary);
         font-size: 14px;
       }
+
+      /* Update progress bar */
+      .update-progress {
+        margin-top: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .progress-bar {
+        flex: 1;
+        height: 6px;
+        background: var(--bg-input);
+        border-radius: 3px;
+        overflow: hidden;
+        max-width: 200px;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: var(--primary-color);
+        border-radius: 3px;
+        width: 0%;
+        transition: width 0.3s ease;
+      }
+
+      .progress-text {
+        font-size: 12px;
+        color: var(--text-secondary);
+        min-width: 40px;
+      }
+
+      .update-buttons {
+        display: flex;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+
+      .btn-primary {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+      }
+
+      .btn-primary:hover {
+        background: var(--primary-dark);
+      }
+
+      #update-section .settings-item-info {
+        flex: 1;
+      }
     </style>
   </head>
   <body>
@@ -474,8 +525,8 @@
               </svg>
             </div>
             <div class="account-details">
-              <h3>Ring Account</h3>
-              <p>Connected and syncing</p>
+              <h3 id="account-name">Ring Account</h3>
+              <p id="account-email">Loading...</p>
             </div>
           </div>
           <button class="btn-logout" id="logout-btn">Sign Out</button>
@@ -500,20 +551,43 @@
           </div>
         </div>
 
-        <div class="settings-item">
+        <div class="settings-item" id="update-section">
           <div class="settings-item-info">
-            <div class="settings-item-title">Check for Updates</div>
-            <div class="settings-item-description">
-              You're running the latest version
+            <div class="settings-item-title" id="update-title">Check for Updates</div>
+            <div class="settings-item-description" id="update-description">
+              Click to check for available updates
+            </div>
+            <!-- Progress bar for download -->
+            <div class="update-progress" id="update-progress" style="display: none;">
+              <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+              </div>
+              <span class="progress-text" id="progress-text">0%</span>
             </div>
           </div>
-          <button
-            class="btn btn-secondary"
-            id="check-updates-btn"
-            style="padding: 8px 16px; font-size: 13px"
-          >
-            Check Now
-          </button>
+          <div class="update-buttons">
+            <button
+              class="btn btn-secondary"
+              id="check-updates-btn"
+              style="padding: 8px 16px; font-size: 13px"
+            >
+              Check Now
+            </button>
+            <button
+              class="btn btn-primary"
+              id="download-update-btn"
+              style="padding: 8px 16px; font-size: 13px; display: none;"
+            >
+              Download
+            </button>
+            <button
+              class="btn btn-primary"
+              id="install-update-btn"
+              style="padding: 8px 16px; font-size: 13px; display: none;"
+            >
+              Install & Restart
+            </button>
+          </div>
         </div>
       </section>
     </div>

@@ -8,12 +8,84 @@ import {
 } from "electron";
 import * as path from "path";
 import * as fs from "fs";
+import { autoUpdater } from "electron-updater";
 import { RingService } from "../services/ringService";
 import { StorageService, AppSettings } from "../services/storageService";
 
 let mainWindow: BrowserWindow | null = null;
 let ringService: RingService | null = null;
 const storageService = new StorageService();
+
+// Auto-updater configuration
+function setupAutoUpdater(): void {
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("checking-for-update", () => {
+    console.log("Checking for updates...");
+    mainWindow?.webContents.send("update-status", { status: "checking" });
+  });
+
+  autoUpdater.on("update-available", (info) => {
+    console.log("Update available:", info.version);
+    mainWindow?.webContents.send("update-status", { 
+      status: "available", 
+      version: info.version,
+      releaseNotes: info.releaseNotes 
+    });
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    console.log("No updates available");
+    mainWindow?.webContents.send("update-status", { status: "not-available" });
+  });
+
+  autoUpdater.on("download-progress", (progress) => {
+    mainWindow?.webContents.send("update-status", { 
+      status: "downloading", 
+      percent: progress.percent 
+    });
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    console.log("Update downloaded:", info.version);
+    mainWindow?.webContents.send("update-status", { 
+      status: "downloaded", 
+      version: info.version 
+    });
+  });
+
+  autoUpdater.on("error", (error) => {
+    console.error("Auto-updater error:", error);
+    mainWindow?.webContents.send("update-status", { 
+      status: "error", 
+      error: error.message 
+    });
+  });
+}
+
+// IPC handlers for auto-updater
+ipcMain.handle("check-for-updates", async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { success: true, updateInfo: result?.updateInfo };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle("download-update", async () => {
+  try {
+    await autoUpdater.downloadUpdate();
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle("install-update", () => {
+  autoUpdater.quitAndInstall(false, true);
+});
 
 // Request notification permission on macOS
 async function requestNotificationPermission(): Promise<void> {
@@ -85,10 +157,14 @@ function setupRingEventListeners(): void {
 
   ringService.onDing((ding) => {
     showDingNotification(ding);
+    // Send to renderer for in-app notification
+    mainWindow?.webContents.send('ring-ding', ding);
   });
 
   ringService.onMotion((motion) => {
     showMotionNotification(motion);
+    // Send to renderer for in-app notification
+    mainWindow?.webContents.send('ring-motion', motion);
   });
 }
 
@@ -442,6 +518,18 @@ ipcMain.handle("get-app-version", async () => {
   return { success: true, version: app.getVersion() };
 });
 
+ipcMain.handle("get-profile", async () => {
+  try {
+    if (!ringService) {
+      return { success: false, error: "Not authenticated" };
+    }
+    const profile = await ringService.getProfile();
+    return { success: true, profile };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle("save-settings", async (_, settings: AppSettings) => {
   try {
     storageService.saveSettings(settings);
@@ -513,8 +601,16 @@ function registerHlsProtocol(): void {
 
 app.whenReady().then(async () => {
   registerHlsProtocol();
+  setupAutoUpdater();
   await requestNotificationPermission();
   createWindow();
+  
+  // Check for updates after app is ready (only in production)
+  if (app.isPackaged) {
+    setTimeout(() => {
+      autoUpdater.checkForUpdates().catch(console.error);
+    }, 3000);
+  }
 });
 
 app.on("window-all-closed", () => {

@@ -2,8 +2,24 @@
 const backBtn = document.getElementById('back-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const checkUpdatesBtn = document.getElementById('check-updates-btn');
+const downloadUpdateBtn = document.getElementById('download-update-btn');
+const installUpdateBtn = document.getElementById('install-update-btn');
 const toast = document.getElementById('toast');
 const toastMessage = document.getElementById('toast-message');
+
+// Update UI elements
+const updateTitle = document.getElementById('update-title');
+const updateDescription = document.getElementById('update-description');
+const updateProgress = document.getElementById('update-progress');
+const progressFill = document.getElementById('progress-fill');
+const progressText = document.getElementById('progress-text');
+
+// Account elements
+const accountName = document.getElementById('account-name');
+const accountEmail = document.getElementById('account-email');
+
+// Track update state
+let pendingUpdateVersion = null;
 
 // Setting elements
 const notificationsEnabled = document.getElementById('notifications-enabled');
@@ -113,9 +129,13 @@ function setupEventListeners() {
   });
 
   // Check for updates
-  checkUpdatesBtn.addEventListener('click', () => {
-    showToast('You\'re running the latest version');
-  });
+  checkUpdatesBtn.addEventListener('click', checkForUpdates);
+
+  // Download update
+  downloadUpdateBtn.addEventListener('click', downloadUpdate);
+
+  // Install update
+  installUpdateBtn.addEventListener('click', installUpdate);
 
   // Auto-save on any setting change
   const allInputs = [
@@ -161,9 +181,139 @@ async function loadAppVersion() {
   }
 }
 
+// Load user profile
+async function loadProfile() {
+  try {
+    const result = await window.ringAPI.getProfile();
+    if (result.success && result.profile) {
+      const profile = result.profile;
+      // Display the email
+      if (profile.email) {
+        accountEmail.textContent = profile.email;
+      } else {
+        accountEmail.textContent = 'Connected';
+      }
+      // Display name if available
+      if (profile.first_name || profile.last_name) {
+        accountName.textContent = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+      }
+    } else {
+      accountEmail.textContent = 'Connected';
+    }
+  } catch (error) {
+    console.error('Error loading profile:', error);
+    accountEmail.textContent = 'Connected';
+  }
+}
+
+// Setup auto-update listeners
+function setupUpdateListeners() {
+  window.ringAPI.onUpdateStatus((data) => {
+    console.log('Update status:', data);
+    
+    switch (data.status) {
+      case 'checking':
+        updateTitle.textContent = 'Checking for Updates';
+        updateDescription.textContent = 'Looking for new versions...';
+        checkUpdatesBtn.disabled = true;
+        checkUpdatesBtn.textContent = 'Checking...';
+        break;
+        
+      case 'available':
+        pendingUpdateVersion = data.version;
+        updateTitle.textContent = 'Update Available';
+        updateDescription.textContent = `Version ${data.version} is available`;
+        checkUpdatesBtn.style.display = 'none';
+        downloadUpdateBtn.style.display = 'inline-block';
+        break;
+        
+      case 'not-available':
+        updateTitle.textContent = 'Up to Date';
+        updateDescription.textContent = 'You\'re running the latest version';
+        checkUpdatesBtn.disabled = false;
+        checkUpdatesBtn.textContent = 'Check Now';
+        showToast('You\'re running the latest version');
+        break;
+        
+      case 'downloading':
+        updateTitle.textContent = 'Downloading Update';
+        const percent = Math.round(data.percent || 0);
+        updateDescription.textContent = `Downloading version ${pendingUpdateVersion}...`;
+        updateProgress.style.display = 'flex';
+        progressFill.style.width = `${percent}%`;
+        progressText.textContent = `${percent}%`;
+        downloadUpdateBtn.style.display = 'none';
+        break;
+        
+      case 'downloaded':
+        updateTitle.textContent = 'Update Ready';
+        updateDescription.textContent = `Version ${data.version || pendingUpdateVersion} is ready to install`;
+        updateProgress.style.display = 'none';
+        installUpdateBtn.style.display = 'inline-block';
+        showToast('Update downloaded! Click "Install & Restart" to update.');
+        break;
+        
+      case 'error':
+        updateTitle.textContent = 'Update Error';
+        updateDescription.textContent = data.error || 'Failed to check for updates';
+        checkUpdatesBtn.disabled = false;
+        checkUpdatesBtn.textContent = 'Try Again';
+        checkUpdatesBtn.style.display = 'inline-block';
+        downloadUpdateBtn.style.display = 'none';
+        updateProgress.style.display = 'none';
+        break;
+    }
+  });
+}
+
+// Check for updates
+async function checkForUpdates() {
+  try {
+    checkUpdatesBtn.disabled = true;
+    checkUpdatesBtn.textContent = 'Checking...';
+    const result = await window.ringAPI.checkForUpdates();
+    if (!result.success) {
+      updateDescription.textContent = result.error || 'Failed to check for updates';
+      checkUpdatesBtn.disabled = false;
+      checkUpdatesBtn.textContent = 'Try Again';
+    }
+  } catch (error) {
+    console.error('Error checking for updates:', error);
+    updateDescription.textContent = 'Failed to check for updates';
+    checkUpdatesBtn.disabled = false;
+    checkUpdatesBtn.textContent = 'Try Again';
+  }
+}
+
+// Download update
+async function downloadUpdate() {
+  try {
+    downloadUpdateBtn.disabled = true;
+    downloadUpdateBtn.textContent = 'Starting...';
+    const result = await window.ringAPI.downloadUpdate();
+    if (!result.success) {
+      showToast('Failed to download update');
+      downloadUpdateBtn.disabled = false;
+      downloadUpdateBtn.textContent = 'Download';
+    }
+  } catch (error) {
+    console.error('Error downloading update:', error);
+    showToast('Failed to download update');
+    downloadUpdateBtn.disabled = false;
+    downloadUpdateBtn.textContent = 'Download';
+  }
+}
+
+// Install update
+function installUpdate() {
+  window.ringAPI.installUpdate();
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
   loadAppVersion();
+  loadProfile();
   setupEventListeners();
+  setupUpdateListeners();
 });

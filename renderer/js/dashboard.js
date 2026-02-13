@@ -764,5 +764,70 @@ function showError(message) {
   // For now, just log - could implement toast notifications
 }
 
+// Show in-app toast notification
+function showToast(type, title, body, deviceId) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  
+  const icon = type === 'ding' 
+    ? `<svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>`
+    : `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
+
+  toast.innerHTML = `
+    <div class="toast-icon">${icon}</div>
+    <div class="toast-content">
+      <div class="toast-title">${title}</div>
+      <div class="toast-body">${body}</div>
+    </div>
+    <button class="toast-close">
+      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+  `;
+
+  // Click toast to open camera
+  toast.addEventListener('click', (e) => {
+    if (!e.target.closest('.toast-close')) {
+      openLiveStream(deviceId);
+      removeToast(toast);
+    }
+  });
+
+  // Close button
+  toast.querySelector('.toast-close').addEventListener('click', (e) => {
+    e.stopPropagation();
+    removeToast(toast);
+  });
+
+  container.appendChild(toast);
+
+  // Auto-remove after 8 seconds
+  setTimeout(() => removeToast(toast), 8000);
+}
+
+function removeToast(toast) {
+  if (!toast || !toast.parentNode) return;
+  toast.style.animation = 'slideOut 0.3s ease forwards';
+  setTimeout(() => toast.remove(), 300);
+}
+
+// Setup Ring event listeners for in-app notifications
+function setupRingEventListeners() {
+  window.ringAPI.onDing((data) => {
+    console.log('Ding event received:', data);
+    showToast('ding', 'Doorbell Ring', `Someone is at ${data.deviceName}`, data.deviceId);
+  });
+
+  window.ringAPI.onMotion((data) => {
+    console.log('Motion event received:', data);
+    showToast('motion', 'Motion Detected', `Movement at ${data.deviceName}`, data.deviceId);
+  });
+}
+
 // Initialize on load
-document.addEventListener('DOMContentLoaded', initialize);
+document.addEventListener('DOMContentLoaded', () => {
+  initialize();
+  setupRingEventListeners();
+});
