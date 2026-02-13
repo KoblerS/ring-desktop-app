@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+    />
+    <title>Ring Desktop - Settings</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <style>
+      .settings-container {
+        padding: 60px 30px 30px;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .settings-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 32px;
+      }
+
+      .back-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+      }
+
+      .back-btn:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--primary-color);
+      }
+
+      .back-btn svg {
+        width: 20px;
+        height: 20px;
+        fill: var(--text-primary);
+      }
+
+      .settings-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        margin-bottom: 24px;
+        overflow: hidden;
+      }
+
+      .settings-section-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .settings-section-header svg {
+        width: 24px;
+        height: 24px;
+        fill: var(--primary-color);
+      }
+
+      .settings-section-header h2 {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .settings-item {
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .settings-item:last-child {
+        border-bottom: none;
+      }
+
+      .settings-item-info {
+        flex: 1;
+      }
+
+      .settings-item-title {
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+      }
+
+      .settings-item-description {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      /* Toggle Switch */
+      .toggle-switch {
+        position: relative;
+        width: 52px;
+        height: 28px;
+        flex-shrink: 0;
+        margin-left: 16px;
+      }
+
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: 28px;
+        transition: var(--transition);
+      }
+
+      .toggle-slider::before {
+        position: absolute;
+        content: "";
+        height: 22px;
+        width: 22px;
+        left: 2px;
+        bottom: 2px;
+        background: var(--text-muted);
+        border-radius: 50%;
+        transition: var(--transition);
+      }
+
+      .toggle-switch input:checked + .toggle-slider {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+      }
+
+      .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(24px);
+        background: white;
+      }
+
+      .toggle-switch input:focus + .toggle-slider {
+        box-shadow: 0 0 0 3px var(--primary-light);
+      }
+
+      /* Select Dropdown */
+      .settings-select {
+        padding: 10px 36px 10px 14px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        color: var(--text-primary);
+        font-size: 14px;
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%239a9aaa'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        transition: var(--transition);
+        min-width: 150px;
+      }
+
+      .settings-select:hover {
+        border-color: var(--primary-color);
+      }
+
+      .settings-select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px var(--primary-light);
+      }
+
+      /* Account Section */
+      .account-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .account-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary-color), #0d9ad8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .account-avatar svg {
+        width: 24px;
+        height: 24px;
+        fill: white;
+      }
+
+      .account-details h3 {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 2px;
+      }
+
+      .account-details p {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .btn-logout {
+        padding: 10px 20px;
+        background: transparent;
+        border: 1px solid var(--danger-color);
+        color: var(--danger-color);
+        border-radius: var(--radius);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+
+      .btn-logout:hover {
+        background: var(--danger-color);
+        color: white;
+      }
+
+      /* Version Info */
+      .version-info {
+        text-align: center;
+        padding: 24px;
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+
+      .version-info a {
+        color: var(--primary-color);
+        text-decoration: none;
+      }
+
+      .version-info a:hover {
+        text-decoration: underline;
+      }
+
+      /* Toast notification */
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        padding: 14px 24px;
+        box-shadow: var(--shadow-lg);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        opacity: 0;
+        transition: all 0.3s ease;
+        z-index: 3000;
+      }
+
+      .toast.visible {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+
+      .toast.success {
+        border-color: var(--secondary-color);
+      }
+
+      .toast.success svg {
+        fill: var(--secondary-color);
+      }
+
+      .toast svg {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+      }
+
+      .toast span {
+        color: var(--text-primary);
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="titlebar"></div>
+
+    <div class="settings-container">
+      <header class="settings-header">
+        <button class="back-btn" id="back-btn" title="Back to Dashboard">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"
+            />
+          </svg>
+        </button>
+        <h1>Settings</h1>
+      </header>
+
+      <!-- Notifications Section -->
+      <section class="settings-section">
+        <div class="settings-section-header">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"
+            />
+          </svg>
+          <h2>Notifications</h2>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Enable Notifications</div>
+            <div class="settings-item-description">
+              Show desktop notifications for Ring events
+            </div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="notifications-enabled" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Doorbell Alerts</div>
+            <div class="settings-item-description">
+              Get notified when someone rings your doorbell
+            </div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="doorbell-alerts" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Motion Alerts</div>
+            <div class="settings-item-description">
+              Get notified when motion is detected
+            </div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="motion-alerts" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Notification Sound</div>
+            <div class="settings-item-description">
+              Play a sound when notifications arrive
+            </div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="notification-sound" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Include Snapshot</div>
+            <div class="settings-item-description">
+              Show camera preview in notifications
+            </div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="notification-snapshot" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- App Behavior Section -->
+      <section class="settings-section">
+        <div class="settings-section-header">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"
+            />
+          </svg>
+          <h2>App Behavior</h2>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Launch at Login</div>
+            <div class="settings-item-description">
+              Automatically start Ring Desktop when you log in
+            </div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="launch-at-login" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Start Minimized</div>
+            <div class="settings-item-description">
+              Start the app in the background
+            </div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="start-minimized" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Snapshot Refresh Interval</div>
+            <div class="settings-item-description">
+              How often to refresh camera previews
+            </div>
+          </div>
+          <select class="settings-select" id="snapshot-interval">
+            <option value="30">Every 30 seconds</option>
+            <option value="60" selected>Every minute</option>
+            <option value="120">Every 2 minutes</option>
+            <option value="300">Every 5 minutes</option>
+          </select>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Live View Quality</div>
+            <div class="settings-item-description">
+              Snapshot refresh rate during live view
+            </div>
+          </div>
+          <select class="settings-select" id="live-view-quality">
+            <option value="1000">High (1 sec)</option>
+            <option value="2000" selected>Medium (2 sec)</option>
+            <option value="3000">Low (3 sec)</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- Account Section -->
+      <section class="settings-section">
+        <div class="settings-section-header">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+            />
+          </svg>
+          <h2>Account</h2>
+        </div>
+
+        <div class="settings-item">
+          <div class="account-info">
+            <div class="account-avatar">
+              <svg viewBox="0 0 24 24">
+                <path
+                  d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                />
+              </svg>
+            </div>
+            <div class="account-details">
+              <h3>Ring Account</h3>
+              <p>Connected and syncing</p>
+            </div>
+          </div>
+          <button class="btn-logout" id="logout-btn">Sign Out</button>
+        </div>
+      </section>
+
+      <!-- About Section -->
+      <section class="settings-section">
+        <div class="settings-section-header">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+            />
+          </svg>
+          <h2>About</h2>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Version</div>
+            <div class="settings-item-description" id="app-version">Ring Desktop v1.0.0</div>
+          </div>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <div class="settings-item-title">Check for Updates</div>
+            <div class="settings-item-description">
+              You're running the latest version
+            </div>
+          </div>
+          <button
+            class="btn btn-secondary"
+            id="check-updates-btn"
+            style="padding: 8px 16px; font-size: 13px"
+          >
+            Check Now
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+      <svg viewBox="0 0 24 24">
+        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+      </svg>
+      <span id="toast-message">Settings saved</span>
+    </div>
+
+    <script src="js/settings.js"></script>
+  </body>
+</html>

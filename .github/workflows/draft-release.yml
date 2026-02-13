@@ -1,0 +1,36 @@
+name: Draft Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  draft-release:
+    name: Draft Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create Release Draft
+        id: release
+        uses: KoblerS/release-drafter@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          generate-release-notes: true
+          version-prefix: v
+
+      - name: Output Release Info
+        run: |
+          echo "## Release Draft Created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release ID:** ${{ steps.release.outputs.release-id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ steps.release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Go to [Releases](${{ github.server_url }}/${{ github.repository }}/releases) to review and publish." >> $GITHUB_STEP_SUMMARY

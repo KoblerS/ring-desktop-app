@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+  <title>Ring Desktop - Login</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="titlebar"></div>
+  
+  <div class="login-container">
+    <div class="login-card">
+      <div class="logo">
+        <img src="assets/app-logo.png" alt="Ring Desktop" class="logo-image">
+        <h1>Ring Desktop</h1>
+        <p>Sign in to manage your Ring devices</p>
+      </div>
+
+      <div id="error-message" class="error-message"></div>
+
+      <!-- Login Form -->
+      <form id="login-form">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input 
+            type="email" 
+            id="email" 
+            name="email" 
+            placeholder="Enter your Ring email"
+            required
+            autocomplete="email"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input 
+            type="password" 
+            id="password" 
+            name="password" 
+            placeholder="Enter your password"
+            required
+            autocomplete="current-password"
+          >
+        </div>
+
+        <button type="submit" id="login-btn" class="btn btn-primary">
+          Sign In
+        </button>
+      </form>
+
+      <!-- 2FA Section -->
+      <div id="two-factor-section" class="two-factor-section">
+        <div class="two-factor-info">
+          <p>A verification code has been sent to your device.</p>
+          <p>Enter the <strong>6-digit code</strong> below:</p>
+        </div>
+
+        <form id="two-factor-form">
+          <div class="code-input">
+            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="0" required>
+            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="1" required>
+            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="2" required>
+            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="3" required>
+            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="4" required>
+            <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="5" required>
+          </div>
+
+          <button type="submit" id="verify-btn" class="btn btn-primary">
+            Verify Code
+          </button>
+
+          <button type="button" id="back-btn" class="btn btn-secondary" style="margin-top: 12px;">
+            Back to Login
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/login.js"></script>
+</body>
+</html>
