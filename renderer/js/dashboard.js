@@ -238,17 +238,17 @@ async function openLiveStream(cameraId) {
   const liveIndicator = document.getElementById('live-indicator');
 
   try {
-    // Try real live streaming via startLiveCall + ffmpeg
-    console.log('Starting real live stream...');
-    const realStreamSuccess = await startRealLiveStream(cameraId);
+    // Try WebRTC streaming first (no ffmpeg required)
+    console.log('Starting WebRTC stream...');
+    const webrtcSuccess = await startWebRTCStream(cameraId);
     
-    if (realStreamSuccess) {
+    if (webrtcSuccess) {
       isStreaming = true;
       streamLoading.style.display = 'none';
       if (liveIndicator) liveIndicator.style.display = 'flex';
     } else {
       // Fallback to snapshot streaming
-      console.log('Real live stream failed, falling back to snapshot streaming');
+      console.log('WebRTC stream failed, falling back to snapshot streaming');
       await startSnapshotFallback(cameraId, camera.name);
     }
   } catch (error) {
@@ -315,9 +315,33 @@ async function startWebRTCStream(cameraId) {
       console.log('ICE gathering state:', peerConnection.iceGatheringState);
     };
 
-    // Add transceivers for receiving audio and video
-    peerConnection.addTransceiver('audio', { direction: 'recvonly' });
-    peerConnection.addTransceiver('video', { direction: 'recvonly' });
+    // Ring expects sendrecv direction for both audio and video
+    // We create silent/blank tracks to satisfy the sendrecv requirement
+    
+    // Create a silent audio track using AudioContext
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const audioDestination = audioContext.createMediaStreamDestination();
+    oscillator.connect(audioDestination);
+    oscillator.frequency.value = 0; // Silent
+    oscillator.start();
+    const silentAudioTrack = audioDestination.stream.getAudioTracks()[0];
+    
+    // Create a blank video track using canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, 1, 1);
+    const videoStream = canvas.captureStream(1); // 1 fps
+    const blankVideoTrack = videoStream.getVideoTracks()[0];
+    
+    // Add audio transceiver with sendrecv direction (required by Ring)
+    peerConnection.addTransceiver(silentAudioTrack, { direction: 'sendrecv' });
+    
+    // Add video transceiver with sendrecv direction (required by Ring)
+    peerConnection.addTransceiver(blankVideoTrack, { direction: 'sendrecv' });
 
     // Create offer
     const offer = await peerConnection.createOffer();
@@ -410,100 +434,6 @@ function waitForConnection(timeoutMs) {
   });
 }
 
-// Start real live stream using Node.js WebRTC + ffmpeg transcoding to HLS
-async function startRealLiveStream(cameraId) {
-  try {
-    // Start the stream on the main process
-    console.log('Starting real live stream on main process...');
-    const result = await window.ringAPI.startRealLiveStream(cameraId);
-
-    if (!result.success) {
-      console.error('Failed to start real live stream:', result.error);
-      return false;
-    }
-
-    console.log('Real live stream started, HLS URL:', result.hlsUrl);
-
-    // Load HLS.js dynamically if not already loaded
-    if (!window.Hls) {
-      await loadHlsJs();
-    }
-
-    if (window.Hls && Hls.isSupported()) {
-      // Use HLS.js for playback
-      if (window.hlsPlayer) {
-        window.hlsPlayer.destroy();
-      }
-
-      window.hlsPlayer = new Hls({
-        liveDurationInfinity: true,
-        liveBackBufferLength: 0,
-        maxBufferLength: 5,
-        maxMaxBufferLength: 10,
-        lowLatencyMode: true,
-      });
-
-      // Use custom protocol for HLS files
-      const hlsUrl = `hls://${cameraId}/stream.m3u8`;
-      
-      window.hlsPlayer.loadSource(hlsUrl);
-      window.hlsPlayer.attachMedia(streamVideo);
-
-      window.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
-        console.log('HLS manifest parsed, starting playback...');
-        streamVideo.play().catch(e => console.log('Autoplay blocked:', e));
-      });
-
-      window.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
-        console.error('HLS error:', data);
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              console.log('Network error, trying to recover...');
-              window.hlsPlayer.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              console.log('Media error, trying to recover...');
-              window.hlsPlayer.recoverMediaError();
-              break;
-            default:
-              console.error('Fatal HLS error, cannot recover');
-              break;
-          }
-        }
-      });
-    } else if (streamVideo.canPlayType('application/vnd.apple.mpegurl')) {
-      // Native HLS support (Safari)
-      streamVideo.src = `hls://${cameraId}/stream.m3u8`;
-      streamVideo.play().catch(e => console.log('Autoplay blocked:', e));
-    } else {
-      console.error('HLS not supported in this browser');
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error starting real live stream:', error);
-    return false;
-  }
-}
-
-// Load HLS.js library dynamically
-async function loadHlsJs() {
-  return new Promise((resolve, reject) => {
-    if (window.Hls) {
-      resolve();
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
-    script.onload = resolve;
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
-
 // Fallback to snapshot-based streaming
 async function startSnapshotFallback(cameraId, cameraName) {
   const liveIndicator = document.getElementById('live-indicator');
@@ -567,15 +497,6 @@ function showStreamError(message) {
 
 // Close live stream modal
 async function closeLiveStream() {
-  // Stop real live stream
-  if (currentStreamCameraId) {
-    try {
-      await window.ringAPI.stopRealLiveStream(currentStreamCameraId);
-    } catch (error) {
-      console.error('Error stopping real live stream:', error);
-    }
-  }
-
   // Stop WebRTC connection
   if (peerConnection) {
     peerConnection.close();
@@ -602,7 +523,6 @@ async function closeLiveStream() {
   
   // Remove listeners
   window.ringAPI.removeLiveSnapshotListener();
-  window.ringAPI.removeLiveVideoDataListener();
   
   // Clean up MediaSource
   if (mediaSource) {
