@@ -2,9 +2,7 @@ import { RingApi, RingCamera } from "ring-client-api";
 import * as path from "path";
 import * as fs from "fs";
 import { app, BrowserWindow } from "electron";
-import { StreamingSession } from "ring-client-api/lib/streaming/streaming-session";
 import { SimpleWebRtcSession } from "ring-client-api/lib/streaming/simple-webrtc-session";
-import { spawn, ChildProcess } from "child_process";
 
 interface LoginResult {
   success: boolean;
@@ -33,18 +31,8 @@ interface CameraInfo {
 type DingCallback = (ding: any) => void;
 type MotionCallback = (motion: any) => void;
 
-// Store active streaming sessions
-const activeStreams: Map<string, StreamingSession> = new Map();
-const activeHlsSessions: Map<string, { session: StreamingSession; hlsPath: string }> = new Map();
+// Store active WebRTC sessions for browser-based streaming
 const activeWebRtcSessions: Map<string, SimpleWebRtcSession> = new Map();
-
-// Store active live stream sessions with ffmpeg for browser streaming
-interface LiveStreamSession {
-  streamingSession: StreamingSession;
-  ffmpegProcess: ChildProcess | null;
-  isActive: boolean;
-}
-const activeLiveStreams: Map<string, LiveStreamSession> = new Map();
 
 export class RingService {
   private ringApi: RingApi | null = null;
@@ -291,74 +279,6 @@ export class RingService {
     }
   }
 
-  async startLiveStream(
-    deviceId: string,
-  ): Promise<{ success: boolean; streamPath?: string; error?: string }> {
-    const camera = this.cameras.find((c) => c.id.toString() === deviceId);
-    if (!camera) {
-      return { success: false, error: "Camera not found" };
-    }
-
-    try {
-      // Stop any existing stream for this camera
-      await this.stopLiveStream(deviceId);
-
-      // Create output path for the stream
-      const userDataPath = app.getPath("userData");
-      const streamDir = path.join(userDataPath, "streams");
-
-      // Ensure stream directory exists
-      if (!fs.existsSync(streamDir)) {
-        fs.mkdirSync(streamDir, { recursive: true });
-      }
-
-      const streamPath = path.join(streamDir, `stream-${deviceId}.mp4`);
-
-      // Start the live stream - this uses ffmpeg internally
-      const streamingSession = await camera.streamVideo({
-        output: [
-          "-f",
-          "mp4",
-          "-movflags",
-          "frag_keyframe+empty_moov+faststart",
-          "-preset",
-          "ultrafast",
-          "-tune",
-          "zerolatency",
-          streamPath,
-        ],
-      });
-
-      // Store the session for later cleanup
-      activeStreams.set(deviceId, streamingSession);
-
-      // Handle stream end
-      streamingSession.onCallEnded.subscribe(() => {
-        activeStreams.delete(deviceId);
-      });
-
-      return { success: true, streamPath };
-    } catch (error: any) {
-      console.error("Error starting live stream:", error);
-      return {
-        success: false,
-        error: error.message || "Failed to start stream",
-      };
-    }
-  }
-
-  async stopLiveStream(deviceId: string): Promise<void> {
-    const session = activeStreams.get(deviceId);
-    if (session) {
-      try {
-        session.stop();
-      } catch (error) {
-        console.error("Error stopping stream:", error);
-      }
-      activeStreams.delete(deviceId);
-    }
-  }
-
   // Get a continuous stream of snapshots for "live" view fallback
   async *getSnapshotStream(
     deviceId: string,
@@ -422,132 +342,6 @@ export class RingService {
     if (camera && camera.hasSiren) {
       // Note: setSiren might not be available on all devices
     }
-  }
-
-  // Start HLS streaming session using ffmpeg
-  async startHlsStream(deviceId: string): Promise<{ success: boolean; hlsUrl?: string; error?: string }> {
-    const camera = this.cameras.find((c) => c.id.toString() === deviceId);
-    if (!camera) {
-      return { success: false, error: "Camera not found" };
-    }
-
-    try {
-      // Stop any existing HLS session for this camera
-      await this.stopHlsStream(deviceId);
-
-      // Create output directory for HLS files
-      const userDataPath = app.getPath("userData");
-      const hlsDir = path.join(userDataPath, "hls", deviceId);
-
-      // Ensure HLS directory exists
-      if (!fs.existsSync(hlsDir)) {
-        fs.mkdirSync(hlsDir, { recursive: true });
-      }
-
-      // Clean up any existing files
-      const existingFiles = fs.readdirSync(hlsDir);
-      for (const file of existingFiles) {
-        fs.unlinkSync(path.join(hlsDir, file));
-      }
-
-      const playlistPath = path.join(hlsDir, "stream.m3u8");
-
-      // Starting HLS stream
-
-      // Start the live stream with HLS output
-      const streamingSession = await camera.streamVideo({
-        output: [
-          // HLS output settings
-          "-f", "hls",
-          "-hls_time", "2",
-          "-hls_list_size", "5",
-          "-hls_flags", "delete_segments+append_list",
-          "-hls_segment_type", "mpegts",
-          "-hls_segment_filename", path.join(hlsDir, "segment%03d.ts"),
-          playlistPath
-        ],
-      });
-
-      // Waiting for ffmpeg to produce segments
-
-      // Store the session
-      activeHlsSessions.set(deviceId, { session: streamingSession, hlsPath: hlsDir });
-
-      // Handle stream end
-      streamingSession.onCallEnded.subscribe(() => {
-        activeHlsSessions.delete(deviceId);
-      });
-
-      // Poll for playlist file creation with timeout
-      const maxWaitMs = 15000;
-      const pollIntervalMs = 500;
-      let waited = 0;
-
-      while (waited < maxWaitMs) {
-        await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
-        waited += pollIntervalMs;
-
-        if (fs.existsSync(playlistPath)) {
-          // Check if there's at least one segment
-          const files = fs.readdirSync(hlsDir);
-          const segments = files.filter(f => f.endsWith('.ts'));
-          
-          if (segments.length > 0) {
-            return { success: true, hlsUrl: playlistPath };
-          }
-        }
-      }
-
-      // Timeout - cleanup and fail
-      console.error(`HLS playlist not created after ${maxWaitMs}ms`);
-      streamingSession.stop();
-      activeHlsSessions.delete(deviceId);
-      return { success: false, error: "Failed to create HLS stream - timeout waiting for ffmpeg" };
-    } catch (error: any) {
-      console.error("Error starting HLS stream:", error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Stop HLS streaming session
-  async stopHlsStream(deviceId: string): Promise<void> {
-    const hlsSession = activeHlsSessions.get(deviceId);
-    if (hlsSession) {
-      try {
-        hlsSession.session.stop();
-        
-        // Clean up HLS files
-        if (fs.existsSync(hlsSession.hlsPath)) {
-          const files = fs.readdirSync(hlsSession.hlsPath);
-          for (const file of files) {
-            try {
-              fs.unlinkSync(path.join(hlsSession.hlsPath, file));
-            } catch (e) {
-              // Ignore cleanup errors
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error stopping HLS stream:", error);
-      }
-      activeHlsSessions.delete(deviceId);
-    }
-  }
-
-  // Get HLS directory path for serving files
-  getHlsPath(deviceId: string): string | null {
-    const hlsSession = activeHlsSessions.get(deviceId);
-    return hlsSession?.hlsPath || null;
-  }
-
-  // Get live HLS directory path
-  getLiveHlsPath(deviceId: string): string | null {
-    const liveSession = activeLiveStreams.get(deviceId);
-    if (liveSession && liveSession.isActive) {
-      const userDataPath = app.getPath("userData");
-      return path.join(userDataPath, "live-hls", deviceId);
-    }
-    return null;
   }
 
   // Create a WebRTC session for browser-based streaming
@@ -615,140 +409,11 @@ export class RingService {
     }
   }
 
-  // Start a real live stream using streamVideo() with ffmpeg transcoding to HLS
-  async startRealLiveStream(
-    deviceId: string,
-    onVideoData: (data: Buffer) => void
-  ): Promise<{ success: boolean; hlsUrl?: string; error?: string }> {
-    const camera = this.cameras.find((c) => c.id.toString() === deviceId);
-    if (!camera) {
-      return { success: false, error: "Camera not found" };
-    }
-
-    try {
-      // Stop any existing live stream for this camera
-      await this.stopRealLiveStream(deviceId);
-
-      // Starting live stream
-
-      // Create HLS output directory
-      const userDataPath = app.getPath("userData");
-      const hlsDir = path.join(userDataPath, "live-hls", deviceId);
-      if (!fs.existsSync(hlsDir)) {
-        fs.mkdirSync(hlsDir, { recursive: true });
-      }
-
-      // Clean up existing files
-      const existingFiles = fs.readdirSync(hlsDir);
-      for (const file of existingFiles) {
-        try {
-          fs.unlinkSync(path.join(hlsDir, file));
-        } catch (e) {}
-      }
-
-      const playlistPath = path.join(hlsDir, "stream.m3u8");
-
-      // Use streamVideo which handles the full WebRTC + ffmpeg pipeline
-      // Output to HLS format for browser playback
-      const streamingSession = await camera.streamVideo({
-        video: ["-vcodec", "copy"], // Keep H264 as-is
-        audio: ["-acodec", "aac", "-b:a", "128k"],
-        output: [
-          "-f", "hls",
-          "-hls_time", "1",
-          "-hls_list_size", "3",
-          "-hls_flags", "delete_segments+append_list+omit_endlist",
-          "-hls_segment_type", "mpegts",
-          "-hls_segment_filename", path.join(hlsDir, "segment%03d.ts"),
-          playlistPath
-        ]
-      });
-
-      // Store the session
-      const liveSession: LiveStreamSession = {
-        streamingSession,
-        ffmpegProcess: null,
-        isActive: true,
-      };
-      activeLiveStreams.set(deviceId, liveSession);
-
-      // Handle stream end
-      streamingSession.onCallEnded.subscribe(() => {
-        liveSession.isActive = false;
-      });
-
-      // Wait for HLS playlist to be created
-      const maxWaitMs = 20000;
-      const pollIntervalMs = 500;
-      let waited = 0;
-
-      while (waited < maxWaitMs && liveSession.isActive) {
-        await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
-        waited += pollIntervalMs;
-
-        if (fs.existsSync(playlistPath)) {
-          const files = fs.readdirSync(hlsDir);
-          const segments = files.filter(f => f.endsWith('.ts'));
-          
-          if (segments.length > 0) {
-            return { success: true, hlsUrl: playlistPath };
-          }
-        }
-      }
-
-      // Timeout
-      console.error(`HLS stream not ready after ${maxWaitMs}ms`);
-      await this.stopRealLiveStream(deviceId);
-      return { success: false, error: "Timeout waiting for video stream" };
-
-    } catch (error: any) {
-      console.error("Error starting real live stream:", error);
-      await this.stopRealLiveStream(deviceId);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Stop a real live stream
-  async stopRealLiveStream(deviceId: string): Promise<void> {
-    const liveSession = activeLiveStreams.get(deviceId);
-    if (liveSession) {
-      // Stopping live stream
-      liveSession.isActive = false;
-
-      if (liveSession.ffmpegProcess) {
-        try {
-          liveSession.ffmpegProcess.kill("SIGTERM");
-        } catch (e) {
-          // Ignore
-        }
-      }
-
-      if (liveSession.streamingSession) {
-        try {
-          liveSession.streamingSession.stop();
-        } catch (e) {
-          console.error("Error stopping streaming session:", e);
-        }
-      }
-
-      activeLiveStreams.delete(deviceId);
-    }
-  }
-
   // Cleanup all active streams
   async cleanup(): Promise<void> {
     this.stopEventPolling();
-    for (const [deviceId] of activeStreams) {
-      await this.stopLiveStream(deviceId);
-    }
-    for (const [deviceId] of activeHlsSessions) {
-      await this.stopHlsStream(deviceId);
-    }
     for (const [deviceId] of activeWebRtcSessions) {
       await this.stopWebRtcSession(deviceId);
-    }
-    for (const [deviceId] of activeLiveStreams) {
-      await this.stopRealLiveStream(deviceId);
     }
   }
 }

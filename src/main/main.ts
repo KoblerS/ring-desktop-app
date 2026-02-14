@@ -297,31 +297,7 @@ ipcMain.handle("get-snapshot", async (_, deviceId: string) => {
   }
 });
 
-ipcMain.handle("start-live-stream", async (_, deviceId: string) => {
-  try {
-    if (!ringService) {
-      return { success: false, error: "Not authenticated" };
-    }
-    const result = await ringService.startLiveStream(deviceId);
-    return result;
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle("stop-live-stream", async (_, deviceId: string) => {
-  try {
-    if (!ringService) {
-      return { success: false, error: "Not authenticated" };
-    }
-    await ringService.stopLiveStream(deviceId);
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-});
-
-// Start rapid snapshot updates for live view (fallback when ffmpeg not available)
+// Start rapid snapshot updates for live view (fallback when WebRTC not available)
 ipcMain.handle("start-snapshot-stream", async (_, deviceId: string) => {
   try {
     if (!ringService) {
@@ -437,41 +413,6 @@ ipcMain.handle("stop-webrtc-session", async (_, deviceId: string) => {
   }
 });
 
-// Real live stream handlers using startLiveCall()
-ipcMain.handle("start-real-live-stream", async (_, deviceId: string) => {
-  try {
-    if (!ringService) {
-      return { success: false, error: "Not authenticated" };
-    }
-
-    // Callback not used for HLS approach, but kept for API compatibility
-    const onVideoData = (data: Buffer) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send("live-video-data", {
-          deviceId,
-          data: data.toString("base64"),
-        });
-      }
-    };
-
-    return await ringService.startRealLiveStream(deviceId, onVideoData);
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle("stop-real-live-stream", async (_, deviceId: string) => {
-  try {
-    if (!ringService) {
-      return { success: false, error: "Not authenticated" };
-    }
-    await ringService.stopRealLiveStream(deviceId);
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-});
-
 ipcMain.handle("logout", async () => {
   try {
     // Stop all snapshot streams
@@ -546,61 +487,7 @@ ipcMain.handle("save-settings", async (_, settings: AppSettings) => {
   }
 });
 
-// Register custom protocol for serving HLS files
-function registerHlsProtocol(): void {
-  protocol.handle("hls", async (request) => {
-    try {
-      const url = new URL(request.url);
-      const deviceId = url.hostname;
-      const filename = url.pathname.slice(1); // Remove leading slash
-
-      if (!ringService) {
-        return new Response("Not authenticated", { status: 401 });
-      }
-
-      // Try live HLS first, then fall back to regular HLS
-      let hlsPath = ringService.getLiveHlsPath(deviceId);
-      if (!hlsPath) {
-        hlsPath = ringService.getHlsPath(deviceId);
-      }
-
-      if (!hlsPath) {
-        // Stream not active or already stopped - return 404 silently
-        return new Response("Stream not found", { status: 404 });
-      }
-
-      const filePath = path.join(hlsPath, filename);
-
-      if (!fs.existsSync(filePath)) {
-        console.log(`HLS file not found: ${filePath}`);
-        return new Response("File not found", { status: 404 });
-      }
-
-      // Determine content type
-      let contentType = "application/octet-stream";
-      if (filename.endsWith(".m3u8")) {
-        contentType = "application/vnd.apple.mpegurl";
-      } else if (filename.endsWith(".ts")) {
-        contentType = "video/mp2t";
-      }
-
-      const fileContent = fs.readFileSync(filePath);
-      return new Response(fileContent, {
-        headers: {
-          "Content-Type": contentType,
-          "Access-Control-Allow-Origin": "*",
-          "Cache-Control": "no-cache",
-        },
-      });
-    } catch (error) {
-      console.error("Error serving HLS file:", error);
-      return new Response("Internal server error", { status: 500 });
-    }
-  });
-}
-
 app.whenReady().then(async () => {
-  registerHlsProtocol();
   setupAutoUpdater();
   await requestNotificationPermission();
   createWindow();

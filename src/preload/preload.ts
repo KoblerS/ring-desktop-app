@@ -18,12 +18,6 @@ contextBridge.exposeInMainWorld('ringAPI', {
   getSnapshot: (deviceId: string) => 
     ipcRenderer.invoke('get-snapshot', deviceId),
   
-  startLiveStream: (deviceId: string) => 
-    ipcRenderer.invoke('start-live-stream', deviceId),
-  
-  stopLiveStream: (deviceId: string) => 
-    ipcRenderer.invoke('stop-live-stream', deviceId),
-  
   startSnapshotStream: (deviceId: string) => 
     ipcRenderer.invoke('start-snapshot-stream', deviceId),
   
@@ -42,13 +36,6 @@ contextBridge.exposeInMainWorld('ringAPI', {
   
   stopWebRtcSession: (deviceId: string) =>
     ipcRenderer.invoke('stop-webrtc-session', deviceId),
-  
-  // Real live streaming using startLiveCall
-  startRealLiveStream: (deviceId: string) =>
-    ipcRenderer.invoke('start-real-live-stream', deviceId),
-  
-  stopRealLiveStream: (deviceId: string) =>
-    ipcRenderer.invoke('stop-real-live-stream', deviceId),
   
   getDeviceHealth: (deviceId: string) => 
     ipcRenderer.invoke('get-device-health', deviceId),
@@ -76,15 +63,6 @@ contextBridge.exposeInMainWorld('ringAPI', {
 
   removeLiveSnapshotListener: () => {
     ipcRenderer.removeAllListeners('live-snapshot');
-  },
-
-  // Real live video data from ffmpeg
-  onLiveVideoData: (callback: (data: { deviceId: string; data: string }) => void) => {
-    ipcRenderer.on('live-video-data', (_, data) => callback(data));
-  },
-
-  removeLiveVideoDataListener: () => {
-    ipcRenderer.removeAllListeners('live-video-data');
   },
 
   // Ring event notifications
@@ -120,16 +98,12 @@ declare global {
       logout: () => Promise<any>;
       getCameras: () => Promise<any>;
       getSnapshot: (deviceId: string) => Promise<any>;
-      startLiveStream: (deviceId: string) => Promise<any>;
-      stopLiveStream: (deviceId: string) => Promise<any>;
       startSnapshotStream: (deviceId: string) => Promise<any>;
       stopSnapshotStream: (deviceId: string) => Promise<any>;
       createWebRtcSession: (deviceId: string) => Promise<any>;
       startWebRtcSession: (deviceId: string, sdpOffer: string) => Promise<any>;
       activateCameraSpeaker: (deviceId: string) => Promise<any>;
       stopWebRtcSession: (deviceId: string) => Promise<any>;
-      startRealLiveStream: (deviceId: string) => Promise<any>;
-      stopRealLiveStream: (deviceId: string) => Promise<any>;
       getDeviceHealth: (deviceId: string) => Promise<any>;
       getSettings: () => Promise<any>;
       saveSettings: (settings: any) => Promise<any>;
@@ -138,8 +112,6 @@ declare global {
       onCameraUpdate: (callback: (data: any) => void) => void;
       onLiveSnapshot: (callback: (data: { deviceId: string; snapshot: string }) => void) => void;
       removeLiveSnapshotListener: () => void;
-      onLiveVideoData: (callback: (data: { deviceId: string; data: string }) => void) => void;
-      removeLiveVideoDataListener: () => void;
       onDing: (callback: (data: { deviceId: string; deviceName: string; timestamp: string }) => void) => void;
       onMotion: (callback: (data: { deviceId: string; deviceName: string; timestamp: string }) => void) => void;
       getProfile: () => Promise<any>;
