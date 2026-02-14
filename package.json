@@ -1,6 +1,6 @@
 {
   "name": "ring-desktop-app",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Ring Camera Management Desktop Application",
   "main": "dist/main/main.js",
   "scripts": {
