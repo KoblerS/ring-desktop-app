@@ -11,8 +11,51 @@ permissions:
   id-token: write
 
 jobs:
+  # Test build on both platforms to catch issues early
+  test-build:
+    name: Test Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Test macOS Build
+        if: matrix.platform == 'mac'
+        run: npm run package -- --mac --universal --publish never
+
+      - name: Test Windows Build
+        if: matrix.platform == 'win'
+        run: npm run package -- --win --x64 --publish never
+
+      - name: Build Success Summary
+        run: |
+          echo "## ${{ matrix.platform }} Build Successful" >> $GITHUB_STEP_SUMMARY
+
+  # Create draft release after builds pass
   draft-release:
     name: Draft Release
+    needs: test-build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
