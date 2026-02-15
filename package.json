@@ -12,7 +12,7 @@
     "package:mac": "electron-builder --mac",
     "package:win": "electron-builder --win",
     "package:all": "electron-builder --mac --win",
-    "postinstall": "node scripts/patch-binary-data.js"
+    "postinstall": "node scripts/postinstall.js"
   },
   "author": "Simon Kobler",
   "license": "MIT",
